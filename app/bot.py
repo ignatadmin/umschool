@@ -73,14 +73,19 @@ def process_subject_step(message, student):
             session.commit()
 
         msg = bot.send_message(message.chat.id, "Введите ваш балл:")
-        bot.register_next_step_handler(msg, process_score_step, student, subject)
+        bot.register_next_step_handler(msg, process_score_step, student, subject.id)
     finally:
         session.close()
 
-def process_score_step(message, student, subject):
+def process_score_step(message, student, subject_id):
     score_value = int(message.text)
     session = Session()
     try:
+        subject = session.query(Subject).filter_by(id=subject_id).first()
+        if not subject:
+            bot.send_message(message.chat.id, "Предмет не найден.")
+            return
+
         score = Score(student_id=student.id, subject_id=subject.id, score=score_value)
         session.add(score)
         session.commit()

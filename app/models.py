@@ -33,6 +33,6 @@ class Score(Base):
     student = relationship("Student", back_populates="scores")
     subject = relationship("Subject", back_populates="scores")
 
-DATABASE_URL = f"postgresql://{os.getenv('DB_USERNAME')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
+DATABASE_URL = f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('POSTGRES_DB')}"
 engine = create_engine(DATABASE_URL)
 Base.metadata.create_all(engine)
