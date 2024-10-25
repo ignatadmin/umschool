@@ -1,17 +1,20 @@
-from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, create_engine, ForeignKey, BigInteger
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from passlib.context import CryptContext
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 Base = declarative_base()
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class Student(Base):
     __tablename__ = 'students'
     id = Column(Integer, primary_key=True)
-    telegram_id = Column(BigInteger, unique=True, nullable=False)
+    username = Column(String, unique=True, nullable=False)
+    password_hash = Column(String, nullable=False)
     name = Column(String, nullable=False)
     surname = Column(String, nullable=False)
     scores = relationship("Score", back_populates="student")

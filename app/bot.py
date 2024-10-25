@@ -1,7 +1,7 @@
 import os
 from telebot import TeleBot, types
 from sqlalchemy.orm import sessionmaker
-from models import Base, Student, Subject, Score, engine
+from models import Base, Student, Subject, Score, engine, pwd_context
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 bot = TeleBot(TOKEN)
@@ -15,6 +15,7 @@ def start(message):
     bot.send_message(
         message.chat.id,
         '''Cписок команд:
+
 /register - Регистрация
 /add - Добавить результат ЕГЭ
 /view - Посмотреть свои баллы ЕГЭ'''
@@ -24,21 +25,33 @@ def start(message):
 @bot.message_handler(commands=['register'])
 def register(message):
     msg = bot.send_message(message.chat.id, "Введите имя и фамилию через пробел:")
-    bot.register_next_step_handler(msg, process_full_name_step)
+    bot.register_next_step_handler(msg, process_name_and_surname_step)
 
 
-def process_full_name_step(message):
-    full_name = message.text.split()
-    if len(full_name) != 2:
-        bot.send_message(message.chat.id, "Ввод не корректен")
+def process_name_and_surname_step(message):
+    data = message.text.split()
+    if len(data) != 2:
+        bot.send_message(message.chat.id, "Ввод не корректен, введите имя и фамилию через пробел")
         return register(message)
 
-    name, surname = full_name
-    telegram_id = message.from_user.id
+    name, surname = data
+    msg = bot.send_message(message.chat.id, "Введите пароль:")
+    bot.register_next_step_handler(msg, process_password_step, name, surname)
+
+
+def process_password_step(message, name, surname):
+    password = message.text
+    username = message.from_user.username
 
     session = Session()
     try:
-        student = Student(name=name, surname=surname, telegram_id=telegram_id)
+        existing_user = session.query(Student).filter_by(username=username).first()
+        if existing_user:
+            bot.send_message(message.chat.id, "Этот username уже занят.")
+            return
+
+        password_hash = pwd_context.hash(password)
+        student = Student(name=name, surname=surname, username=username, password_hash=password_hash)
         session.add(student)
         session.commit()
         bot.send_message(message.chat.id, "Регистрация прошла успешно")
@@ -50,7 +63,8 @@ def process_full_name_step(message):
 def enter_scores(message):
     session = Session()
     try:
-        student = session.query(Student).filter_by(telegram_id=message.from_user.id).first()
+        username = message.from_user.username
+        student = session.query(Student).filter_by(username=username).first()
         if not student:
             bot.send_message(message.chat.id, "Сначала зарегистрируйтесь с помощью команды /register")
             return
@@ -72,7 +86,7 @@ def enter_scores(message):
 def select_subject(call):
     subject_id = int(call.data.split("_")[1])
     msg = bot.send_message(call.message.chat.id, "Введите ваш балл:")
-    bot.register_next_step_handler(msg, process_score_step, subject_id, call.from_user.id)
+    bot.register_next_step_handler(msg, process_score_step, subject_id, call.from_user.username)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "add_new_subject")
@@ -103,7 +117,7 @@ def process_new_subject(message):
         session.close()
 
 
-def process_score_step(message, subject_id, telegram_id):
+def process_score_step(message, subject_id, username):
     try:
         score_value = int(message.text)
     except ValueError:
@@ -112,7 +126,7 @@ def process_score_step(message, subject_id, telegram_id):
 
     session = Session()
     try:
-        student = session.query(Student).filter_by(telegram_id=telegram_id).first()
+        student = session.query(Student).filter_by(username=username).first()
         subject = session.query(Subject).get(subject_id)
 
         if not student or not subject:
@@ -136,7 +150,9 @@ def process_score_step(message, subject_id, telegram_id):
 def view_scores(message):
     session = Session()
     try:
-        student = session.query(Student).filter_by(telegram_id=message.from_user.id).first()
+        username = message.from_user.username
+
+        student = session.query(Student).filter_by(username=username).first()
         if not student:
             bot.send_message(message.chat.id, "Сначала зарегистрируйтесь с помощью команды /register")
             return
