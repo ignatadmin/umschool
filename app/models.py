@@ -1,5 +1,5 @@
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, create_engine, ForeignKey
+from sqlalchemy import Column, Integer, String, create_engine, ForeignKey, BigInteger
 from sqlalchemy.ext.declarative import declarative_base
 import os
 from dotenv import load_dotenv
@@ -11,10 +11,9 @@ Base = declarative_base()
 class Student(Base):
     __tablename__ = 'students'
     id = Column(Integer, primary_key=True)
-    telegram_id = Column(Integer, unique=True, nullable=False)
+    telegram_id = Column(BigInteger, unique=True, nullable=False)
     name = Column(String, nullable=False)
     surname = Column(String, nullable=False)
-    password = Column(String, nullable=False)
     scores = relationship("Score", back_populates="student")
 
 class Subject(Base):

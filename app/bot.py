@@ -36,15 +36,9 @@ def process_full_name_step(message):
     name, surname = full_name
     telegram_id = message.from_user.id
 
-    msg = bot.send_message(message.chat.id, "Введите пароль:")
-    bot.register_next_step_handler(msg, process_password_step, name, surname, telegram_id)
-
-
-def process_password_step(message, name, surname, telegram_id):
-    password = message.text
     session = Session()
     try:
-        student = Student(name=name, surname=surname, password=password, telegram_id=telegram_id)
+        student = Student(name=name, surname=surname, telegram_id=telegram_id)
         session.add(student)
         session.commit()
         bot.send_message(message.chat.id, "Регистрация прошла успешно")
@@ -64,11 +58,9 @@ def enter_scores(message):
         subjects = session.query(Subject).all()
         keyboard = types.InlineKeyboardMarkup()
 
-        # Добавляем кнопки для существующих предметов
         for subject in subjects:
             keyboard.add(types.InlineKeyboardButton(subject.name, callback_data=f"subject_{subject.id}"))
 
-        # Добавляем кнопку "Добавить предмет"
         keyboard.add(types.InlineKeyboardButton("Добавить предмет", callback_data="add_new_subject"))
 
         bot.send_message(message.chat.id, "Выберите предмет:", reply_markup=keyboard)
@@ -85,6 +77,10 @@ def select_subject(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == "add_new_subject")
 def add_subject_inline(call):
+    if call.from_user.id != int(os.getenv("SUPERUSER_ID")):
+        bot.send_message(call.message.chat.id, "У вас недостаточно прав")
+        return
+
     msg = bot.send_message(call.message.chat.id, "Введите название нового предмета:")
     bot.register_next_step_handler(msg, process_new_subject)
 
@@ -93,13 +89,16 @@ def process_new_subject(message):
     subject_name = message.text
     session = Session()
     try:
-        if session.query(Subject).filter_by(name=subject_name).first():
+        existing_subject = session.query(Subject).filter_by(name=subject_name).first()
+        if existing_subject:
             bot.send_message(message.chat.id, "Этот предмет уже существует")
-        else:
-            subject = Subject(name=subject_name)
-            session.add(subject)
-            session.commit()
-            bot.send_message(message.chat.id, "Предмет добавлен")
+            return
+
+        subject = Subject(name=subject_name)
+        session.add(subject)
+        session.commit()
+        bot.send_message(message.chat.id, "Предмет добавлен")
+        enter_scores(message)
     finally:
         session.close()
 
@@ -133,7 +132,6 @@ def process_score_step(message, subject_id, telegram_id):
         session.close()
 
 
-
 @bot.message_handler(commands=['view'])
 def view_scores(message):
     session = Session()
@@ -154,7 +152,6 @@ def view_scores(message):
             )
     finally:
         session.close()
-
 
 
 if __name__ == "__main__":
