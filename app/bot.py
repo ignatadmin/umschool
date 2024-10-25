@@ -1,7 +1,7 @@
 import os
 from telebot import TeleBot, types
 from sqlalchemy.orm import sessionmaker
-from models import Base, Student, Subject, Score, engine, pwd_context
+from models import Base, Student, Subject, Score, engine
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 bot = TeleBot(TOKEN)
@@ -15,7 +15,6 @@ def start(message):
     bot.send_message(
         message.chat.id,
         '''Cписок команд:
-
 /register - Регистрация
 /add - Добавить результат ЕГЭ
 /view - Посмотреть свои баллы ЕГЭ'''
@@ -35,12 +34,6 @@ def process_name_and_surname_step(message):
         return register(message)
 
     name, surname = data
-    msg = bot.send_message(message.chat.id, "Введите пароль:")
-    bot.register_next_step_handler(msg, process_password_step, name, surname)
-
-
-def process_password_step(message, name, surname):
-    password = message.text
     username = message.from_user.username
 
     session = Session()
@@ -50,8 +43,7 @@ def process_password_step(message, name, surname):
             bot.send_message(message.chat.id, "Этот username уже занят.")
             return
 
-        password_hash = pwd_context.hash(password)
-        student = Student(name=name, surname=surname, username=username, password_hash=password_hash)
+        student = Student(name=name, surname=surname, username=username)
         session.add(student)
         session.commit()
         bot.send_message(message.chat.id, "Регистрация прошла успешно")
@@ -59,7 +51,7 @@ def process_password_step(message, name, surname):
         session.close()
 
 
-@bot.message_handler(commands=['add'])
+@bot.message_handler(commands=['enter_scores'])
 def enter_scores(message):
     session = Session()
     try:
@@ -146,7 +138,7 @@ def process_score_step(message, subject_id, username):
         session.close()
 
 
-@bot.message_handler(commands=['view'])
+@bot.message_handler(commands=['view_scores'])
 def view_scores(message):
     session = Session()
     try:
