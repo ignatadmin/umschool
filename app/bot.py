@@ -16,8 +16,8 @@ def start(message):
         message.chat.id,
         '''Cписок команд:
 /register - Регистрация
-/add - Добавить результат ЕГЭ
-/view - Посмотреть свои баллы ЕГЭ'''
+/enter_scores - Добавить результат ЕГЭ
+/view_scores - Посмотреть свои баллы ЕГЭ'''
     )
 
 
@@ -31,7 +31,7 @@ def process_name_and_surname_step(message):
     data = message.text.split()
     if len(data) != 2:
         bot.send_message(message.chat.id, "Ввод не корректен, введите имя и фамилию через пробел")
-        return register(message)
+        return
 
     name, surname = data
     username = message.from_user.username
@@ -40,7 +40,7 @@ def process_name_and_surname_step(message):
     try:
         existing_user = session.query(Student).filter_by(username=username).first()
         if existing_user:
-            bot.send_message(message.chat.id, "Этот username уже занят.")
+            bot.send_message(message.chat.id, "Вы уже в системе")
             return
 
         student = Student(name=name, surname=surname, username=username)
